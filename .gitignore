@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 /dist
+src/components/LL1
+src/components/LR(k)
 src/server.js
 src/components/node.js
 # local env files

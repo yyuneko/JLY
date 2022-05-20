@@ -2,6 +2,19 @@
 
 let Lexer = require('./lexer').Lexer, Token = require('./lexer').Token;
 
+function is_special_symbols(INPUT) {
+    let f = INPUT.length === 1 && ((INPUT >= String.fromCharCode(33) && INPUT <= String.fromCharCode(47)) ||
+        (INPUT >= String.fromCharCode(91) && INPUT <= String.fromCharCode(96)) ||
+        (INPUT >= String.fromCharCode(123) && INPUT <= String.fromCharCode(126)) ||
+        (INPUT >= String.fromCharCode(58) && INPUT <= String.fromCharCode(64)));
+    // console.log(INPUT, f);
+    return f;
+}
+
+function is_special_symbols_string(INPUT) {
+    return Array.from(INPUT).every(CH => is_special_symbols(CH));
+}
+
 class State {
     constructor(id, is_start, is_accept) {
         this.is_start = is_start;
@@ -81,8 +94,8 @@ class NFA {
                         STACK.push('(' + PRE + "|ϵ)");
                     } else return "";
                 } else {
-                    let PRE=STACK.pop();
-                    console.log('pre',PRE);
+                    let PRE = STACK.pop();
+                    console.log('pre', PRE);
                     STACK.push('(' + PRE + "|ϵ)");
                 }
             } else if (i > 0 && old_regex[i] === '+') {
@@ -228,6 +241,7 @@ class NFA {
                 STATE_AFTER_MERGE.is_start = true;
             }
             if (STATE.is_accept) {
+                if (!Number.isFinite(STATE.id)) STATE_AFTER_MERGE.id = STATE.id;
                 STATE_AFTER_MERGE.is_accept = true;
             }
         }
@@ -240,7 +254,7 @@ class NFA {
      * @brief from NFA to DFA
      * @returns {NFA} actually a DFA which is a special NFA
      */
-    to_dfa() {
+    to_dfa(minimize = true, merge_accepts = true) {
         this.set_states_id();
         let dfa = new NFA();
         let TRANSFER_TABLE_FOR_STATES = new Map(),
@@ -263,6 +277,161 @@ class NFA {
                     dfa.move(TRANSFER_TABLE_FOR_STATES.get(UNVISITED_STATES.key), TRANSFER_TABLE_FOR_STATES.get(E_CLOSURE.key), INPUT);
                 }
             }
+        }
+        // console.log("DFA", dfa)
+        if (minimize) {
+            console.log("当前正在最小化DFA")
+            //Minimize DFA
+            let GROUPS_NOT_ACCEPT = [[]], GROUPS_ACCEPT = [[]];
+            //divide into ACCEPT and not ACCEPT
+            // console.log(dfa);
+            // dfa.set_states_id();
+            console.log("hhhh")
+            dfa.states=dfa.get_states();
+            for (let STATE of dfa.states) {
+                if (STATE.is_accept) GROUPS_ACCEPT[0].push(STATE);
+                else GROUPS_NOT_ACCEPT[0].push(STATE);
+            }
+            let include = (GROUP, TO_STATE) => {
+                // console.log(GROUP[0].as_from_moves.map(MOVE => MOVE.to_state))
+                for (let ITEM of GROUP) {
+                    if (ITEM.as_from_moves.map(MOVE => MOVE.to_state).includes(TO_STATE)) return true;
+                }
+                return false;
+            };
+            let divide = (GROUP) => {
+                // console.log("待划分", GROUP.map(v => v.id));
+                if (GROUP.length <= 1) return [GROUP];
+                let SUB_0 = [], SUB_1 = [];
+                for (let STATE of GROUP) {
+                    if (Number.isFinite(STATE.id) && STATE.as_from_moves.every(TO => GROUP.includes(TO.to_state))) {
+                        SUB_0.push(STATE);
+                    } else {
+                        if (SUB_1.length !== 0) {
+                            let LEN = SUB_1.length;
+                            for (let INDEX = 0; INDEX < LEN; ++INDEX) {
+                                if (STATE.as_from_moves.every(TO => include(SUB_1[INDEX], TO.to_state))) {
+                                    SUB_1[INDEX].push(STATE);
+                                    break
+                                } else if (INDEX === SUB_1.length - 1) {
+                                    SUB_1.push([STATE])
+                                }
+                            }
+                        } else SUB_1.push([STATE]);
+                    }
+                }
+                /* console.log("划分后");
+                 console.log("第一组", SUB_0.map(v => v.id))
+                 console.log("第二组")
+                 SUB_1.forEach(v => {
+                     console.log(v.map(u => u.id))
+                 })*/
+                SUB_1.push(SUB_0)
+                return SUB_1
+            }
+
+            let CAN_DIVIDE = true;
+            while (CAN_DIVIDE) {
+                let LEN_QUEUE = GROUPS_NOT_ACCEPT.length;
+                console.log(LEN_QUEUE)
+                for (let i = 0; i < LEN_QUEUE; ++i) {
+                    if (GROUPS_NOT_ACCEPT[0].length > 0) {
+                        let NEW_GROUPS = divide(GROUPS_NOT_ACCEPT.shift());
+                        for (let SUB_GROUP of NEW_GROUPS) {
+                            if (SUB_GROUP.length !== 0)
+                                GROUPS_NOT_ACCEPT.push(SUB_GROUP);
+                        }
+                    }
+                }
+                // console.log(LEN_QUEUE,GROUPS_NOT_ACCEPT.length)
+                if (LEN_QUEUE === GROUPS_NOT_ACCEPT.length) {
+                    CAN_DIVIDE = false;
+                }
+            }
+            console.log("已完成第一部分")
+            CAN_DIVIDE = true;
+            // console.log(merge_accepts)
+            while (CAN_DIVIDE) {
+                let LEN_QUEUE = GROUPS_ACCEPT.length;
+                for (let i = 0; i < LEN_QUEUE; ++i) {
+                    if (GROUPS_ACCEPT[0].length > 0) {
+                        let NEW_GROUPS = divide(GROUPS_ACCEPT.shift());
+                        // console.log("划分后的Accpet",NEW_GROUPS);
+                        for (let SUB_GROUP of NEW_GROUPS) {
+                            GROUPS_ACCEPT.push(SUB_GROUP);
+                        }
+                    }
+                }
+                if (LEN_QUEUE === GROUPS_ACCEPT.length) {
+                    CAN_DIVIDE = false;
+                }
+            }
+            console.log("已完成第二部分")
+            // merge groups
+            for (let GROUP of GROUPS_NOT_ACCEPT) {
+                let STATE_AFTER_MERGE = new State(undefined, false, false);
+                for (let STATE of GROUP) {
+                    if (STATE.is_start) {
+                        STATE_AFTER_MERGE.is_start = true;
+                    }
+                    // if (STATE.is_accept) {
+                    //     STATE_AFTER_MERGE.is_accept = true;
+
+                    // }
+                    for (let MOVE of STATE.as_from_moves) {
+                        MOVE.from_state = STATE_AFTER_MERGE;
+                        // if (STATE_AFTER_MERGE.as_from_moves.every(_MOVE => _MOVE.input !== MOVE.input||_MOVE.from_state!==MOVE.from_state))
+                        STATE_AFTER_MERGE.as_from_moves.push(MOVE);
+                        // else console.log("已有")
+                    }
+                    for (let MOVE of STATE.as_to_moves) {
+                        MOVE.to_state = STATE_AFTER_MERGE;
+                        // if (STATE_AFTER_MERGE.as_to_moves.every(_MOVE => _MOVE.input !== MOVE.input||_MOVE.to_state!==MOVE.to_state))
+                        STATE_AFTER_MERGE.as_to_moves.push(MOVE);
+                        // else console.log("已有")
+                    }
+                    STATE = null;// free memory
+                }
+                if (STATE_AFTER_MERGE.is_start) dfa.start = STATE_AFTER_MERGE;
+                // if (STATE_AFTER_MERGE.is_accept) dfa.accepts.add(STATE_AFTER_MERGE);
+            }
+            if (merge_accepts) {
+                dfa.accepts = [];
+                for (let GROUP of GROUPS_ACCEPT) {
+                    // console.log("GROUP", GROUP)
+                    if (GROUP.length > 0) {
+                        let STATE_AFTER_MERGE = new State(undefined, false, false);
+                        for (let STATE of GROUP) {
+                            if (STATE.is_start) {
+                                STATE_AFTER_MERGE.is_start = true;
+                            }
+                            if (STATE.is_accept) {
+                                STATE_AFTER_MERGE.is_accept = true;
+                            }
+                            for (let MOVE of STATE.as_from_moves) {
+                                MOVE.from_state = STATE_AFTER_MERGE;
+                                // if (STATE_AFTER_MERGE.as_from_moves.every(_MOVE => _MOVE.input !== MOVE.input||_MOVE.from_state!==MOVE.from_state))
+                                STATE_AFTER_MERGE.as_from_moves.push(MOVE);
+                                // else console.log("已有")
+                            }
+                            for (let MOVE of STATE.as_to_moves) {
+                                MOVE.to_state = STATE_AFTER_MERGE;
+                                // if (STATE_AFTER_MERGE.as_to_moves.every(_MOVE => _MOVE.input !== MOVE.input||_MOVE.to_state!==MOVE.to_state))
+                                STATE_AFTER_MERGE.as_to_moves.push(MOVE);
+                                // else console.log("已有")
+                            }
+                            if (!Number.isFinite(STATE.id)) {
+                                STATE_AFTER_MERGE.id = STATE.id;
+                            }
+                            STATE = null;//free memory
+                        }
+                        if (STATE_AFTER_MERGE.is_start) dfa.start = STATE_AFTER_MERGE;
+                        if (STATE_AFTER_MERGE.is_accept) dfa.accepts.push(STATE_AFTER_MERGE);
+                    }
+                }
+            }
+            // dfa.states.clear();
+            dfa.set_states_id();
         }
         return dfa;
     }
@@ -338,22 +507,58 @@ class NFA {
             this.alphabet.add(input);
     }
 
-    set_states_id() {
-        let STATE_ID = 1, STATES = [];
-        this.start.id = STATE_ID;
+    get_states() {
+        let STATES = [], FINAL_STATES = new Set();
         STATES.push(this.start);
-        this.states.add(this.start);
-        ++STATE_ID;
-        while (STATES.length > 0) {
-            let STATE = STATES.shift();
-            for (let MOVE of STATE.as_from_moves) {
-                if (MOVE.to_state.id === undefined) {
-                    MOVE.to_state.id = STATE_ID++;
-                    STATES.push(MOVE.to_state);
-                    this.states.add(MOVE.to_state);
+        FINAL_STATES.add(this.start);
+        try {
+            while (STATES.length > 0) {
+                let STATE = STATES.shift();
+                for (let MOVE of STATE.as_from_moves) {
+                    if (!FINAL_STATES.has(MOVE.to_state)) {
+                        STATES.push(MOVE.to_state);
+                        FINAL_STATES.add(MOVE.to_state);
+                    }
                 }
             }
+        } catch (e) {
+            console.error(e)
         }
+        return FINAL_STATES;
+    }
+
+    set_states_id() {
+        let STATE_ID = 0;
+        this.states = this.get_states();
+        for (let STATE of this.states) {
+            if (STATE.id === undefined)
+                STATE.id = ++STATE_ID;
+        }
+        /*try {
+            while (STATES.length > 0) {
+                // console.log(`当前${STATES.length}个状态待处理`)
+                let STATE = STATES.shift();
+                // STATE.as_from_moves = Array.from(new Set(STATE.as_from_moves));
+                for (let MOVE of STATE.as_from_moves) {
+                    if (MOVE.to_state.id === undefined || !Number.isFinite(MOVE.to_state.id)) {
+                        if (MOVE.to_state.id === undefined)
+                            MOVE.to_state.id = STATE_ID++;
+                        /!* console.log({
+                             cur: STATE,
+                             states: STATES,
+                             to: MOVE.to_state
+                         })*!/
+                        // if (STATE !== MOVE.to_state ) {
+                        STATES.push(MOVE.to_state);
+                        // console.log("新状态");
+                        // }
+                        this.states.add(MOVE.to_state);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e)
+        }*/
     }
 
     to_dot() {
@@ -372,25 +577,120 @@ class NFA {
                 EDGES.push(MOVE);
             }
         }
+        let WINDOW_WIDTH = window.innerWidth, WINDOW_HEIGHT = window.innerHeight, RANDIR;
+        if (WINDOW_WIDTH > WINDOW_HEIGHT) RANDIR = 'TB';
+        else RANDIR = 'LR';
         let DOT_SOURCE = `digraph graphviz{
 bgcolor="transparent"
-rankdir=LR
+rankdir=${RANDIR}
 node [height=${30 / 300},width=${30 / 300}]
 edge [color=gray]
 0 [label="" peripheries=0]
 0 ->${this.start.id} [label="start"]
 `;
         for (let STATE of this.states) {
-            DOT_SOURCE += `${STATE.id} [peripheries=${STATE.is_accept ? 2 : 1}]\n`;
-            // DOT_SOURCE += `${STATE.id} ${STATE.is_accept?'[style=filled, color=lightblue,peripheries=2]':'[peripheries=1]'}\n`;
+            if (Number.isFinite(STATE.id))
+                DOT_SOURCE += `${STATE.id} `;
+            else if (is_special_symbols(STATE.id)) {
+                DOT_SOURCE += `"\\${STATE.id}"  `;
+            } else if (is_special_symbols_string(STATE.id)) {
+                DOT_SOURCE += `"${STATE.id.replace('%', '\\%')}"`;
+            } else {
+                DOT_SOURCE += `${STATE.id}  `;
+            }
+            DOT_SOURCE += ` [peripheries=${STATE.is_accept ? 2 : 1}]\n`;
         }
         for (let EDGE of EDGES) {
-            DOT_SOURCE += `${EDGE.from_state.id} -> ${EDGE.to_state.id} [label="${EDGE.input}"]\n`;
+            let FROM_ID = EDGE.from_state.id, TO_ID = EDGE.to_state.id;
+
+            if (Number.isFinite(FROM_ID))
+                DOT_SOURCE += `${FROM_ID} -> `;
+            else if (is_special_symbols(FROM_ID)) {
+                DOT_SOURCE += `"\\${FROM_ID}" -> `;
+            } else if (is_special_symbols_string(FROM_ID)) {
+                DOT_SOURCE += `"${FROM_ID}"`;
+            } else {
+                DOT_SOURCE += `${FROM_ID} -> `;
+            }
+            if (Number.isFinite(TO_ID))
+                DOT_SOURCE += `${TO_ID}  `;
+            else if (is_special_symbols(TO_ID)) {
+                DOT_SOURCE += `"\\${TO_ID}" `;
+            } else if (is_special_symbols_string(TO_ID)) {
+                TO_ID = TO_ID.replace('%', '\\%');
+                DOT_SOURCE += `"${TO_ID}"`;
+            } else {
+                DOT_SOURCE += `${TO_ID}  `;
+            }
+            if (Number.isFinite(EDGE.input))
+                DOT_SOURCE += ` [label="${EDGE.input}"]\n`;
+            else if (is_special_symbols(EDGE.input)) {
+                DOT_SOURCE += ` [label="\\${EDGE.input}"]\n`;
+            } else if (is_special_symbols_string(EDGE.input)) {
+                DOT_SOURCE += `"${EDGE.input}"`;
+            } else {
+                DOT_SOURCE += ` [label="${EDGE.input}"]\n `;
+            }
+
         }
         DOT_SOURCE += '}';
+        // console.log(DOT_SOURCE);
         return DOT_SOURCE;
+    }
+
+    static merge(fas) {
+        console.log(`共有${fas.length}个FA`);
+        if (fas.length === 0) {
+            console.error("Error! There are not fas");
+            return null;
+        }
+        let NEW_FA = new NFA();
+        // console.log(Array.from(fas[0].states).map(STATE => STATE.id));
+        let ALL_ACCEPTS = new Set(), ALL_ALPHABET = new Set();
+        let NEW_START_FOR_FAS = new State(undefined, true, false);
+        let NEW_START_NUMBER = Math.max(...(Array.from(fas[0].states).filter(STATE => Number.isFinite(STATE.id)).map(STATE => STATE.id))) + 1;
+        if (!Number.isFinite(NEW_START_NUMBER)) NEW_START_NUMBER = fas[0].states.length + 1;
+        for (let i = 0; i < fas.length; ++i) {
+            console.log(`当前正在处理第${i + 1}个FA`)
+            fas[i].start.is_start = false;
+            let OLD_START_NUMBER = fas[i].start.id;
+            // console.log("新起点", NEW_START_NUMBER);
+            // console.log("旧起点", OLD_START_NUMBER);
+            if (i === 0) {
+                for (let STATE of fas[i].states) {
+                    if (Number.isFinite(STATE.id))
+                        ++STATE.id;
+                }
+            } else {
+                for (let STATE of fas[i].states) {
+                    if (Number.isFinite(STATE.id))
+                        STATE.id = NEW_START_NUMBER + STATE.id - OLD_START_NUMBER;
+                }
+            }
+            NEW_START_NUMBER = Math.max(...Array.from(fas[i].states).filter(STATE => Number.isFinite(STATE.id)).map(STATE => STATE.id)) + fas.length;
+            for (let MOVE of fas[i].start.as_from_moves) {
+                MOVE.from_state = NEW_START_FOR_FAS;
+                NEW_START_FOR_FAS.as_from_moves.push(MOVE);
+            }
+            for (let MOVE of fas[i].start.as_to_moves) {
+                MOVE.to_state = NEW_START_FOR_FAS;
+                NEW_START_FOR_FAS.as_to_moves.push(MOVE);
+            }
+            // fas[i].start = null;
+            ALL_ACCEPTS = new Set([...ALL_ACCEPTS, ...(fas[i].accepts)]);
+            ALL_ALPHABET = new Set([...ALL_ALPHABET, ...(fas[i].alphabet)]);
+            fas[i] = null;
+        }
+        NEW_FA.start = NEW_START_FOR_FAS;
+        NEW_FA.accepts = Array.from(ALL_ACCEPTS);
+        NEW_FA.alphabet = ALL_ALPHABET;
+        NEW_FA.set_states_id();
+        // console.log(NEW_FA)
+        return NEW_FA;
     }
 }
 
 // export {NFA}
 exports.NFA = NFA;
+exports.is_special_symbols = is_special_symbols;
+exports.is_special_symbols_string = is_special_symbols_string;
