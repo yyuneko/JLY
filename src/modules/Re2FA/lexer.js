@@ -157,6 +157,6 @@ class Lexer {
     }
 }
 
-// export {Lexer, Token}
-exports.Lexer=Lexer;
-exports.Token=Token;
+export {Lexer, Token}
+// exports.Lexer=Lexer;
+// exports.Token=Token;

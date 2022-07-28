@@ -1,23 +1,31 @@
 <template>
   <div id="app">
     <header>
-      <div class="header_wrapper">
-        <div class="header_logo-container">
-          <a class="header_logo" href="/">
-            <img src="/favicon.ico"/>
-          </a>
-        </div>
-        <nav class="header_bar">
-          <ul class="header_bar_menu">
-            <li v-for="(item,key) in header_menu"
-                :key="key"
-                class="header_bar_menu_item">
-              <a :href="item.to">{{ item.name }}</a>
-            </li>
-          </ul>
-        </nav>
-      </div>
-      <nav class="header-drawer"></nav>
+      <!--      <div class="header_wrapper">
+              <div class="header_logo-container">
+                <a class="header_logo" href="/">
+                  <img src="/favicon.ico"/>
+                </a>
+              </div>
+              <nav class="header_bar">
+                <ul class="header_bar_menu">
+                  <li v-for="(item,key) in header_menu"
+                      :key="key"
+                      class="header_bar_menu_item">
+                    <a :href="item.to">{{ item.name }}</a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <nav class="header-drawer"></nav>-->
+      <ul class="nav justify-content-end nav-pills">
+        <li v-for="(item,key) in header_menu"
+            :key="key"
+            @click="active=key"
+            class="nav-item">
+          <a :class="{'nav-link':true, 'active':active===key}" :href="item.to">{{ item.name }}</a>
+        </li>
+      </ul>
     </header>
     <main>
       <router-view></router-view>
@@ -38,10 +46,11 @@ export default {
           name: "FA",
           to: "/"
         }, {
-          name: "Nothing",
-          to: "//google.com"
+          name: "Lexer",
+          to: "/lexer"
         }
-      ]
+      ],
+      active: 0
     }
   },
   methods: {}
@@ -49,18 +58,24 @@ export default {
 </script>
 
 <style lang="scss">
-body{
+body {
   margin: 0;
 }
+
 #app {
-  font-family: Roboto,Helvetica,Arial,sans-serif;;
+  font-family: Roboto, Helvetica, Arial, sans-serif;;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   //color: #2c3e50;
   //background-color: #eff7cf;
 }
-.header_wrapper {
+
+header {
+  padding: 24px;
+}
+
+/*.header_wrapper {
   a {
     text-decoration: none;
     color: #000;
@@ -99,5 +114,5 @@ body{
     }
   }
 
-}
+}*/
 </style>

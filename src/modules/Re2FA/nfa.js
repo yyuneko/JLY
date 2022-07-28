@@ -1,6 +1,7 @@
 // import {Lexer, Token} from "@/components/Re2FA/NFA/lexer";
 
-let Lexer = require('./lexer').Lexer, Token = require('./lexer').Token;
+// let Lexer = require('./lexer').Lexer, Token = require('./lexer').Token;
+import {Lexer, Token} from "./lexer.js"
 
 function is_special_symbols(INPUT) {
     let f = INPUT.length === 1 && ((INPUT >= String.fromCharCode(33) && INPUT <= String.fromCharCode(47)) ||
@@ -155,7 +156,7 @@ class NFA {
         regex = NFA.normalize_regex(regex);
         console.log('new regex', regex)
         let TOKENS = Lexer.get_tokens(regex);
-        // console.log('tokens',TOKENS)
+        console.log('tokens',TOKENS)
         let STACK_FOR_NFA = [];
         for (let TOKEN of TOKENS) {
             if (!TOKEN.is_operator()) {
@@ -278,7 +279,7 @@ class NFA {
                 }
             }
         }
-        // console.log("DFA", dfa)
+        console.log("DFA", dfa)
         if (minimize) {
             console.log("当前正在最小化DFA")
             //Minimize DFA
@@ -287,7 +288,7 @@ class NFA {
             // console.log(dfa);
             // dfa.set_states_id();
             console.log("hhhh")
-            dfa.states=dfa.get_states();
+            dfa.states = dfa.get_states();
             for (let STATE of dfa.states) {
                 if (STATE.is_accept) GROUPS_ACCEPT[0].push(STATE);
                 else GROUPS_NOT_ACCEPT[0].push(STATE);
@@ -651,7 +652,7 @@ edge [color=gray]
         let NEW_START_NUMBER = Math.max(...(Array.from(fas[0].states).filter(STATE => Number.isFinite(STATE.id)).map(STATE => STATE.id))) + 1;
         if (!Number.isFinite(NEW_START_NUMBER)) NEW_START_NUMBER = fas[0].states.length + 1;
         for (let i = 0; i < fas.length; ++i) {
-            console.log(`当前正在处理第${i + 1}个FA`)
+            // console.log(`当前正在处理第${i + 1}个FA`)
             fas[i].start.is_start = false;
             let OLD_START_NUMBER = fas[i].start.id;
             // console.log("新起点", NEW_START_NUMBER);
@@ -690,7 +691,7 @@ edge [color=gray]
     }
 }
 
-// export {NFA}
-exports.NFA = NFA;
-exports.is_special_symbols = is_special_symbols;
-exports.is_special_symbols_string = is_special_symbols_string;
+export {NFA, is_special_symbols_string, is_special_symbols}
+// exports.NFA = NFA;
+// exports.is_special_symbols = is_special_symbols;
+// exports.is_special_symbols_string = is_special_symbols_string;

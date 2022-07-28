@@ -3,14 +3,12 @@
 2. [x] NFA to DFA
 3. [x] Minimize DFA
 4. [x] Lexer
-5. [ ] LL(1)
-   1. [ ] predictive analyzer
-   2. [ ] Process of analysis
-   3. [ ] Consider error handling
-6. [ ] LR(0)
-7. [ ] SLR(1)
-8. [ ] LR(1)
-9. [ ] LALR(1)
+5. [ ] Parser
+   1. [ ] LL(1)
+   2. [ ] LR(0)
+   3. [ ] SLR(1)
+   4. [ ] LR(1)
+   5. [ ] LALR(1)
 
 # Usage
 ## Re to FA

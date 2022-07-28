@@ -1,29 +1,53 @@
 <template>
   <div>
-    <input type="text" v-model="regex"/>
+    <!--    <input type="text" v-model="regex"/>-->
+    <div class="alert alert-primary mb-3" role="alert">
+      Only support "|", "?", "*", "+" and concatenation.
+    </div>
+    <div class="input-group mb-3">
+      <input type="text" class="form-control" placeholder="A regular expression" v-model="regex">
+      <div class="input-group-append">
+        <button class="btn btn-outline-secondary" type="button"
+                @click="nfa()">nfa
+        </button>
+        <button class="btn btn-outline-secondary" type="button"
+                @click="dfa()">dfa
+        </button>
+        <button class="btn btn-outline-secondary" type="button"
+                @click="dfa(true)">dfa minimize
+        </button>
+        <button class="btn btn-outline-secondary" type="button"
+                @click="save_as_picture">save as picture
+        </button>
+      </div>
+    </div>
+    <div class="alert alert-warning mb-3" role="alert" v-show="alert">
+      Regular expression is null!
+    </div>
     <div id="graph"></div>
-    <div >
-      <button @click="nfa()">nfa</button>
-      <button @click="dfa()">dfa</button>
-      <button @click="dfa(true)">dfa最小化</button>
-      <button @click="save_as_picture">保存为图片</button>
-    </div>
-    <div id="tokens">
-      <textarea id="stream" v-model="stream"></textarea>
-      <table>
-        <thead>
-        <td>Line</td>
-        <td>Type</td>
-        <td>Value</td>
-        </thead>
-        <tr v-for="(token,i) in tokens" :key="i">
-          <td>{{token.line}}</td>
-          <td>{{token.type}}</td>
-          <td>{{token.value}}</td>
-        </tr>
-      </table>
-    </div>
-    <button @click="nextToken()">next</button>
+    <!--    <div>
+          <button @click="nfa()">nfa</button>
+          <button @click="dfa()">dfa</button>
+          <button @click="dfa(true)">dfa最小化</button>
+          <button @click="save_as_picture">保存为图片</button>
+        </div>-->
+    <!--    <div id="tokens">
+          <textarea id="stream" v-model="stream"></textarea>
+          总计{{ tokens.length }}个token
+          <table>
+            <thead>
+            <td>Line</td>
+            <td>Type</td>
+            <td>Value</td>
+            </thead>
+            <tr v-for="(token,i) in tokens" :key="i">
+              <td>{{ token.line }}</td>
+              <td>{{ token.type }}</td>
+              <td>{{ token.value }}</td>
+            </tr>
+          </table>
+        </div>
+        <button @click="nextToken()">next</button>-->
   </div>
 </template>
 <script>
@@ -32,16 +56,17 @@ import {graphviz} from "d3-graphviz";
 import {play} from "../node";
 import {
   NFA
-} from "@/components/Re2FA/nfa";
+} from "@/modules/Re2FA/nfa";
 // import html2canvas from 'html2canvas'
 import saveSvgAsPng from "save-svg-as-png";
-import {Lexer} from "./examples_custom_language/language_define";
+import {Lexer} from "./sensitive_word_detection/main";
+// import Index from "../../../public/index.html";
 
 export default {
   name: "Dot",
   data() {
     return {
-      regex: "",
+      regex: "(a|b|c)**",
       animate: null,
       canvas: null,
       fa: null,
@@ -49,18 +74,8 @@ export default {
       height: 0,
       lexer: Lexer,
       tokens: [],
-      stream: `int? x; int _a[3][5][6], i,j,k;  float s; x:=0.75;
- _a[i][j][k]-= 19.52 *0x291 / _A[I][K][j]       //Line 2
-   //空一行
- while(i>=95) { i--; abcd$ade}  //分号后的内容有错，至少需要报错：Line 4, ERROR
- for(j in 015..0x15) {   //报错后，下一行要继续
-\tiF(k!=i<<4 && s<1.0345 || k >=3975){
-         \t\ts:= 36.8-21.5*32.4+s^39;        \t
-\t}else{
-\t\tk=123456789123456789; //整数越界,最大2^31-1，
-       \t\ts/=x+x-x*x+x;;
-\t}
-}`,
+      stream: "",
+      alert: false
     };
   },
   created() {
@@ -76,34 +91,56 @@ export default {
       // this.fa = NFA.parse_regex_to_nfa(this.regex);
       this.lexer.run(this.stream);
       this.fa = this.lexer.fa.FA;
-      // console.log(this.fa.to_dot())
-      for(let i=0;i<130;++i)
-        this.nextToken();
-      // if (this.fa) {
-      //   this.d3();
-      // }
+      // eslint-disable-next-line no-constant-condition
+      /*while (true) {
+        if (this.nextToken()) break;
+      }*/
+      if (this.fa) {
+        this.d3();
+      }
     };
   },
   watch: {
     width: function (newV, oldV) {
       if (oldV !== newV) {
-        this.d3(this.fa.to_dot());
+        this.d3();
       }
     },
     height: function (newV, oldV) {
       if (oldV !== newV) {
-        this.d3(this.fa.to_dot());
+        this.d3();
       }
     },
+    stream: function (newV, oldV) {
+      if (oldV !== newV) {
+        this.lexer.run(this.stream);
+        this.fa = this.lexer.fa.FA;
+        this.d3();
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          if (this.nextToken()) break;
+        }
+        let t = "";
+        this.tokens.forEach(TOKEN => {
+          t += `Line${TOKEN.line}: <${TOKEN.type}> ${TOKEN.value}\n`;
+        })
+        console.log(t);
+      }
+    }
   },
   methods: {
     nextToken() {
       let TOKEN;
       while ((TOKEN = this.lexer.reader.next()) === false) ;
       if (TOKEN) {
-        this.tokens.push(TOKEN);
-        console.log(TOKEN)
+        if (TOKEN.done === true) return true;
+        else {
+          this.tokens.push(TOKEN);
+          return false;
+        }
+        // console.log(TOKEN)
       }
+      return false;
       // console.log(TOKEN);
     },
     save_as_picture() {
@@ -121,25 +158,41 @@ export default {
           });
     },
     nfa() {
-      this.fa = NFA.parse_regex_to_nfa(this.regex);
-      if (this.fa) this.d3();
+      if (this.regex) {
+        this.fa = NFA.parse_regex_to_nfa(this.regex);
+        this.d3();
+      } else if (!this.fa) {
+        this.alert = true;
+        setTimeout(() => {
+          this.alert = false;
+        }, 3000)
+      }
     },
     dfa(minimize = false) {
-      if (minimize) console.log("dfa最小化");
-      if (this.fa && this.regex.length === 0) {
-        this.fa = this.fa.to_dfa(minimize);
-      } else {
-        this.fa = NFA.parse_regex_to_nfa(this.regex).to_dfa(minimize);
+      if (this.regex) {
+        this.fa = NFA.parse_regex_to_nfa(this.regex)
+        if (this.fa) this.fa = this.fa.to_dfa(minimize, false);
+      } else if (!this.fa) {
+        this.alert = true;
+        setTimeout(() => {
+          this.alert = false;
+        }, 3000)
       }
       this.d3();
     },
     d3() {
       // console.log('graph', this.fa.to_dot());
-      graphviz("#graph")
+      if (this.fa)
+        graphviz("#graph")
+            .width(this.width)
+            .height(this.height)
+            .options({fit: true})
+            .renderDot(this.fa.to_dot());
+      else graphviz("#graph")
           .width(this.width)
           .height(this.height)
           .options({fit: true})
-          .renderDot(this.fa.to_dot());
+          .renderDot("digraph graphviz{}");
     },
     next() {
       let p = this.animate.next();
@@ -159,19 +212,49 @@ export default {
   background: inherit;
   width: 80%;
   margin: 0 auto;
-  border: black solid 1px;
+  border: 1px solid #ced4da;
   min-height: 70vh;
 }
-#tokens{
+
+.input-group {
+  width: 80%;
+  margin: 0 auto;
+
+  > .input-group-append > .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  > .input-group-append:last-child > .btn:not(:last-child):not(.dropdown-toggle) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+  }
+}
+
+.alert {
+  width: fit-content;
+  margin: 0 auto;
+}
+.alert-primary{
+  width: 80%;
+  margin: 0 auto;
+  border-left-color: #084298;
+  border-left-width: 0.25rem;
+}
+#tokens {
   width: 100%;
-  textarea{
+
+  textarea {
     width: 80%;
     height: 200px;
   }
-  table{
+
+  table {
     margin: 0 auto;
   }
 }
+
 :root {
   --color-content: "";
 }

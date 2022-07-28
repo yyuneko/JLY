@@ -1,7 +1,7 @@
 import {
     NFA, is_special_symbols,
     is_special_symbols_string
-} from "../nfa"
+} from "../../../modules/Re2FA/nfa"
 //A case-insensitive language
 function to_re(keyword) {
     let RE = "";
@@ -38,7 +38,7 @@ let Lexer = {
             set(prop, value) {
                 if (typeof Lexer.reader.props[prop] !== "undefined") {
                     Lexer.reader.props[prop] = value;
-                    console.log(prop, value)
+                    // console.log(prop, value)
                 }
             },
             setDefault() {
@@ -79,7 +79,7 @@ let Lexer = {
                 Lexer.reader.props.current_line++;
             }
             do {
-                if (CHAR !== ' ') break;
+                if (CHAR !== ' '&&CHAR!=='\t') break;
             } while ((CHAR = Lexer.reader.nextChar()) !== false) ;
             if (CHAR) {
                 let WORD = "";
@@ -110,22 +110,24 @@ let Lexer = {
                             }
                         } else {
                             if (Lexer.flowModel(Lexer.fa.state, Lexer.reader.peekChar(), true) === false) {
-                                console.log(WORD)
+                                // console.log(WORD)
                                 if (is_valid_identifier(WORD)) {
-                                    console.log(WORD);
+                                    // console.log(WORD,1);
+                                    // console.log(WORD + Lexer.reader.peekChar())
                                     if (is_valid_identifier(WORD + Lexer.reader.peekChar())) continue;
-                                    if (Lexer.reader.peekChar() === ' ' || Lexer.fa.map_types[Lexer.reader.peekChar()] === "delimiter" || Lexer.fa.map_types[Lexer.reader.peekChar()] === "op") {
+                                    if (Lexer.reader.peekChar() === ' ' ||Lexer.reader.peekChar()==='\t'|| Lexer.fa.map_types[Lexer.reader.peekChar()] === "delimiter" || Lexer.fa.map_types[Lexer.reader.peekChar()] === "op") {
                                         Lexer.fa.reset();
                                         return Lexer.reader.newToken("identifier", WORD.toLowerCase());
                                     }
                                     while (!Lexer.fa.map_types[Lexer.reader.peekChar()]) {
-                                        Lexer.reader.nextChar();
+                                        WORD+=Lexer.reader.nextChar();
                                     }
                                     Lexer.fa.reset();
-                                    Lexer.errorHandler();
+                                    Lexer.errorHandler(WORD);
                                     return false;
                                 } else {
-                                    Lexer.errorHandler();
+                                    console.log(WORD,2)
+                                    Lexer.errorHandler(WORD);
                                     return false;
                                 }
                             }
@@ -133,25 +135,26 @@ let Lexer = {
                     } else {
                         if (is_valid_identifier(WORD)) {
                             if (is_valid_identifier(WORD + Lexer.reader.peekChar())) continue;
-                            if (Lexer.reader.peekChar() === ' ' || Lexer.fa.map_types[Lexer.reader.peekChar()] === "delimiter" || Lexer.fa.map_types[Lexer.reader.peekChar()] === "op") {
+                            // console.log("jjjjj",WORD)
+                            if (Lexer.reader.peekChar() === ' '||Lexer.reader.peekChar()==='\t' || Lexer.fa.map_types[Lexer.reader.peekChar()] === "delimiter" || Lexer.fa.map_types[Lexer.reader.peekChar()] === "op") {
                                 Lexer.fa.reset();
                                 return Lexer.reader.newToken("identifier", WORD.toLowerCase());
                             }
                             while (!Lexer.fa.map_types[Lexer.reader.peekChar()]) {
-                                Lexer.reader.nextChar();
+                               WORD+= Lexer.reader.nextChar();
                             }
                             Lexer.fa.reset();
-                            Lexer.errorHandler();
+                            Lexer.errorHandler(WORD);
                             return false;
-                        } else {
-                            Lexer.errorHandler();
+                        } /*else {
+                            Lexer.errorHandler(WORD);
                             return false;
-                        }
+                        }*/
                     }
-                } while ((CHAR = Lexer.reader.nextChar()) !== false && CHAR !== ' ');
+                } while ((CHAR = Lexer.reader.nextChar()) !== false && CHAR !== ' '&&CHAR!=='\t');
             } else {
                 //end
-                return false;
+                return {done:true};
             }
         }
     },
@@ -293,9 +296,9 @@ let Lexer = {
         // alert("Error! Check the DFA!");
         return false;
     },
-    errorHandler: () => {
+    errorHandler: (content) => {
         Lexer.fa.reset();
-        console.error(`Line ${Lexer.reader.props.current_line + 1}, ERROR`)
+        console.error(`Line ${Lexer.reader.props.current_line + 1}, ERROR: ${content}`)
     },
     printPretty: () => {
 
