@@ -25,15 +25,11 @@ describe("#lexer-based-on-regex", () => {
                 r: "y", name: "test2", func: function (t) {
                     return t.yytext.toUpperCase();
                 }
-            }, {
-                r: "$", name: "test3", func: function (t) {
-                    return "EOF";
-                }
-            }, {
+            }, /*{
                 name: "error", func: function (t) {
                     console.error(`出现错误: ${t}`)
                 }
-            }], tokens: "X Y EOF"
+            }*/], tokens: "X Y "
         };
 
         let input = "xxyx";
@@ -291,5 +287,5 @@ for ( i in 1 .. 20 ) a [ 3 ] [ i - 1 ] [ 0 ] = k + c ;
 } 
 } `)
         });
-    })
+    });
 });

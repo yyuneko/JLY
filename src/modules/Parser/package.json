@@ -2,6 +2,15 @@
   "name": "parser",
   "version": "1.0.0",
   "dependencies": {
+    "lexer": "file:../Lexer"
+  },
+  "devDependencies": {
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "test": "^3.0.1"
+  },
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha.js"
   },
   "main": "lib/parser.js"
 }

@@ -52,14 +52,6 @@ class Lexer {
                 dict.rules[i].r = dict.rules[i].r.split(`{${j}}`).join(`(${dict.macros[j]})`);
             }
         }
-        let rules_with_func = dict.rules.filter((rule) => rule.func !== undefined),
-            rules_without_func = dict.rules.filter((rule) => rule.func === undefined);
-        rules_without_func.sort((a, b) => {
-            if (a.r && b.r)
-                return b.r.length - a.r.length;
-            return 1;
-        })
-        dict.rules = rules_with_func.concat(rules_without_func);
         return dict;
     }
 
@@ -69,14 +61,14 @@ class Lexer {
             dict.tokens = dict.tokens.split(/ +/);
         }
         if (dict.hasOwnProperty("rules")) {
-            let regex_list = [];
+            this.regex_list = [];
             for (let rule of dict.rules) {
                 if (rule.name === "error") {
                     this.error_handle = rule.func;
                 } /*else if (rule.name === "skip") {
 
                 }*/ else if (rule.hasOwnProperty("r") && rule.hasOwnProperty("name")) {
-                    regex_list.push(`(?<${rule.name}>${rule.r})`);
+                    this.regex_list.push({name: rule.name, r: `(?<${rule.name}>${rule.r})`});
                     if (rule.name === "skip") {
 
                     } else if (rule.hasOwnProperty("func")) {
@@ -94,9 +86,7 @@ class Lexer {
                     console.error("规则无效")
                 }
             }
-            let lex_re = new RegExp(regex_list.join('|'), 'y');
-
-            this.lex_regex = lex_re;
+            this.lex_regex = new RegExp(this.regex_list.map(item => item.r).join('|'), 'y');
         }
     }
 
@@ -105,19 +95,22 @@ class Lexer {
      * @param data:String
      */
     input(data) {
+        if (data === null || typeof data === "undefined") return;
         this.lex_data = data;
         this.lex_pos = 0;
         this.lex_data_len = data.length;
         this.yytext = "";
         this.lineno = 1;
         this.colno = 0;
+        this.done = false;
+        this.EOF = false;
+        this.lex_regex.lastIndex = 0;
     }
 
     next() {
         this.yytext = "";
         if (this.lex_pos >= this.lex_data_len) {
             this.done = true;
-            // return false;
         }
         if (this.done) {
             this.EOF = true;
@@ -126,15 +119,28 @@ class Lexer {
         let match = this.lex_regex.exec(this.lex_data);
         if (match) {
             let token, func_name, value;
-            this.lex_pos = this.lex_regex.lastIndex;
             let groups = match.groups;
-            for (let key in groups) {
-                if (groups[key] !== undefined) {
-                    func_name = key;
-                    this.yytext = groups[key];
-                    break;
+
+            while (groups) {
+                let index = -1;
+                for (let key in groups) {
+                    if (groups[key] !== undefined && groups[key].length > this.yytext.length) {
+                        func_name = key;
+                        this.yytext = groups[key];
+                        index = this.regex_list.map(item => item.name).indexOf(key);
+                        this.lex_regex.lastIndex = this.lex_pos + this.yytext.length;
+                        break;
+                    }
                 }
+                if (index === -1) break;
+                groups = (() => {
+                    let re = new RegExp(this.regex_list.slice(index + 1).map(item => item.r).join('|'), 'y');
+                    re.lastIndex = this.lex_pos;
+                    return re;
+                })().exec(this.lex_data)?.groups;
             }
+            this.lex_pos = this.lex_regex.lastIndex;
+
             if (this.lex_regex_func.hasOwnProperty(func_name)) {
                 let func_res = this.lex_regex_func[func_name].call(this, {
                     yytext: this.yytext,
@@ -154,7 +160,7 @@ class Lexer {
             if (this.error_handle) {
                 let t = this.error_handle.call(this, {yytext: this.lex_data[this.lex_pos], lexer: this});
             } else {
-                console.error(`Illegal character ${this.lex_data[this.lex_pos]} at index ${this.lex_pos}`);
+                console.error(`Illegal character '${this.lex_data[this.lex_pos]}' at index ${this.lex_pos}`);
                 this.lex_pos++;
                 this.lex_regex.lastIndex = this.lex_pos;
             }
