@@ -18,4 +18,4 @@ type grammar = {
 ```
 example:
 
-See [example]("./test")
+See [example](./test)
