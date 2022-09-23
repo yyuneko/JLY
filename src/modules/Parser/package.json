@@ -1,5 +1,5 @@
 {
-  "name": "parser",
+  "name": "jly-parser",
   "version": "1.0.0",
   "dependencies": {
     "lexer": "file:../Lexer"

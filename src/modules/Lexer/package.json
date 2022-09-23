@@ -1,5 +1,5 @@
 {
-  "name": "lexer",
+  "name": "jly-lexer",
   "version": "1.0.0",
   "dependencies": {},
   "main": "lexer-based-on-regex.js",
