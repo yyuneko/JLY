@@ -11,19 +11,15 @@ class Lexer {
         this.lineno = 1;
         this.yytext = "";
         this.error_handle = undefined;
-        dict = this.prepareRules(dict);
+        dict.rules = this.prepareRules(dict);
         this.processGrammar(dict);
         this.input(input);
     }
-
-    get_tokens() {
-
-    }
-
-    validate_rules() {
-
-    }
-
+    /**
+     * @brief expand all macros
+     * @param macros 
+     * @returns macros
+     */
     prepareMacros(macros) {
         let finished = false;
         while (!finished) {
@@ -42,36 +38,49 @@ class Lexer {
         }
         return macros;
     }
-
+    /**
+     * @brief replace macros in rules with macros which are expanded
+     * @param  dict 
+     * @returns rules
+     */
     prepareRules(dict) {
         if (dict.macros) {
             dict.macros = this.prepareMacros(dict.macros);
         }
         for (let i = 0; i < dict.rules.length; ++i) {
+            if (dict.rules[i].r instanceof RegExp) {
+                dict.rules[i].r = dict.rules[i].r.source;
+                continue;
+            }
             for (let j in dict.macros) {
                 dict.rules[i].r = dict.rules[i].r.split(`{${j}}`).join(`(${dict.macros[j]})`);
             }
         }
-        return dict;
+        return dict.rules;
     }
-
+    /**
+     * 
+     * @param  dict 
+     * @returns dict
+     */
     processGrammar(dict) {
         if (!dict.tokens) dict.tokens = [];
         if (typeof dict.tokens === 'string') {
-            dict.tokens = dict.tokens.split(/ +/);
+            dict.tokens = dict.tokens.split(/\s+/);
         }
         if (dict.hasOwnProperty("rules")) {
             this.regex_list = [];
             for (let rule of dict.rules) {
                 if (rule.name === "error") {
                     this.error_handle = rule.func;
-                } /*else if (rule.name === "skip") {
-
-                }*/ else if (rule.hasOwnProperty("r") && rule.hasOwnProperty("name")) {
-                    this.regex_list.push({name: rule.name, r: `(?<${rule.name}>${rule.r})`});
+                } else if (rule.hasOwnProperty("r") && rule.hasOwnProperty("name")) {
+                    this.regex_list.push({ name: rule.name, r: `(?<${rule.name}>${rule.r})` });
                     if (rule.name === "skip") {
-
+                        continue;
                     } else if (rule.hasOwnProperty("func")) {
+                        if (this.lex_regex_func.hasOwnProperty(rule.name)) {
+                            throw Error(`Duplicate name is not allowed: ${rule.name}`);
+                        }
                         this.lex_regex_func[rule.name] = rule.func;
                     } else {
                         if (dict.tokens.includes(rule.r)) {
@@ -79,11 +88,11 @@ class Lexer {
                         } else if (dict.tokens.includes(rule.name)) {
                             this.fname2token[rule.name] = rule.name;
                         } else {
-                            console.error(`token '${rule.r}' 未定义`);
+                            console.error(`token '${rule.r}' undefined`);
                         }
                     }
                 } else {
-                    console.error("规则无效")
+                    throw Error("Illegal rule!");
                 }
             }
             this.lex_regex = new RegExp(this.regex_list.map(item => item.r).join('|'), 'y');
@@ -158,7 +167,7 @@ class Lexer {
         } else {
             // No match, see if error_handle if defined
             if (this.error_handle) {
-                let t = this.error_handle.call(this, {yytext: this.lex_data[this.lex_pos], lexer: this});
+                let t = this.error_handle.call(this, { yytext: this.lex_data[this.lex_pos], lexer: this });
             } else {
                 console.error(`Illegal character '${this.lex_data[this.lex_pos]}' at index ${this.lex_pos}`);
                 this.lex_pos++;
@@ -178,4 +187,4 @@ class Lexer {
 }
 
 
-module.exports = Lexer;
+export default Lexer;
