@@ -63,6 +63,7 @@ describe("#lexer-based-on-regex", () => {
             }, rules: [{
                 r: "\\n", name: "new_line", func: function (t) {
                     t.lexer.lineno++;
+                    t.lexer.colno = 1;
                 }
             }, {
                 r: "[ \\t\\r\\a]+", name: "skip",
@@ -205,29 +206,30 @@ describe("#lexer-based-on-regex", () => {
                     r: "\\b\\d+\\b", name: "num", func: function (t) {
                         return "NUM";
                     }
-                }, {r: "\\(", name: "LPAREN"}, {r: "\\)", name: "RPAREN"}, {r: "\\[", name: "LBRACKET"}, {
+                }, { r: "\\(", name: "LPAREN" }, { r: "\\)", name: "RPAREN" }, { r: "\\[", name: "LBRACKET" }, {
                     r: "\\]", name: "RBRACKET"
-                }, {r: "\\{", name: "LBRACE"}, {r: "\\}", name: "RBRACE"}, {r: ",", name: "COMMA"}, {
+                }, { r: "\\{", name: "LBRACE" }, { r: "\\}", name: "RBRACE" }, { r: ",", name: "COMMA" }, {
                     r: "\\.\\.", name: "DPERIOD"
-                }, {r: ";", name: "SEMI"}, {r: "\\.\\.\\.", name: "ELLIPSIS"}, {r: "\\?", name: "TERNARY"}, {
+                }, { r: ";", name: "SEMI" }, { r: "\\.\\.\\.", name: "ELLIPSIS" }, { r: "\\?", name: "TERNARY" }, {
                     r: "=",
                     name: "EQUALS"
-                }, {r: "\\*=", name: "TIMESEQUAL"}, {r: "/=", name: "DIVEQUAL"}, {r: "%=", name: "MODEQUAL"}, {
+                }, { r: "\\*=", name: "TIMESEQUAL" }, { r: "/=", name: "DIVEQUAL" }, { r: "%=", name: "MODEQUAL" }, {
                     r: "\\+=",
                     name: "PLUSEQUAL"
-                }, {r: "-=", name: "MINUSEQUAL"}, {r: "<<=", name: "LSHIFTEQUAL"}, {
+                }, { r: "-=", name: "MINUSEQUAL" }, { r: "<<=", name: "LSHIFTEQUAL" }, {
                     r: ">>=",
                     name: "RSHIFTEQUAL"
-                }, {r: "&=", name: "ANDEQUAL"}, {r: "\\|=", name: "OREQUAL"}, {r: "\\^=", name: "XOREQUAL"}, {
+                }, { r: "&=", name: "ANDEQUAL" }, { r: "\\|=", name: "OREQUAL" }, { r: "\\^=", name: "XOREQUAL" }, {
                     r: "\\:=",
                     name: "COLONEQUAL"
                 },
-                {r: "\\+\\+", name: "INCREMENT"}, {r: "--", name: "DECREMENT"},
+                { r: "\\+\\+", name: "INCREMENT" }, { r: "--", name: "DECREMENT" },
                 {
                     r: "\\n",
                     name: "new_line",
                     func: function (t) {
                         t.lexer.lineno++;
+                        t.lexer.colno = 1;
                     }
                 },
                 {
@@ -236,19 +238,19 @@ describe("#lexer-based-on-regex", () => {
                     func: function (t) {
                         return "COMMENT";
                     }
-                }, {r: "\\+", name: "PLUS"}, {r: "-", name: "MINUS"}, {r: "\\*", name: "TIMES"}, {
+                }, { r: "\\+", name: "PLUS" }, { r: "-", name: "MINUS" }, { r: "\\*", name: "TIMES" }, {
                     r: "/",
                     name: "DIVIDE"
-                }, {r: "%", name: "MODULO"}, {r: "\\|", name: "OR"}, {r: "&", name: "AND"}, {
+                }, { r: "%", name: "MODULO" }, { r: "\\|", name: "OR" }, { r: "&", name: "AND" }, {
                     r: "~",
                     name: "NOT"
-                }, {r: "\\^", name: "XOR"}, {r: "<<", name: "LSHIFT"}, {r: ">>", name: "RSHIFT"}, {
+                }, { r: "\\^", name: "XOR" }, { r: "<<", name: "LSHIFT" }, { r: ">>", name: "RSHIFT" }, {
                     r: "\\|\\|",
                     name: "LOR"
-                }, {r: "&&", name: "LAND"}, {r: "!", name: "LNOT"}, {r: "<", name: "LT"}, {
+                }, { r: "&&", name: "LAND" }, { r: "!", name: "LNOT" }, { r: "<", name: "LT" }, {
                     r: ">",
                     name: "GT"
-                }, {r: "<=", name: "LE"}, {r: ">=", name: "GE"}, {r: "==", name: "EQ"}, {r: "!=", name: "NE"}
+                }, { r: "<=", name: "LE" }, { r: ">=", name: "GE" }, { r: "==", name: "EQ" }, { r: "!=", name: "NE" }
             ]
         };
         let input = `program test{
