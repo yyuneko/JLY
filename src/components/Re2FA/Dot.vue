@@ -53,7 +53,7 @@
 <script>
 import {graphviz} from "d3-graphviz";
 // eslint-disable-next-line no-unused-vars
-import {play} from "../node";
+// import {play} from "../node";
 import {
   NFA
 } from "@/modules/Re2FA/nfa";
@@ -201,7 +201,7 @@ export default {
       });
     },
     e() {
-      this.animate = play();
+      // this.animate = play();
     },
   },
 };

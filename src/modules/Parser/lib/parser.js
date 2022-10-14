@@ -310,7 +310,7 @@ class Parser {
         return new Proxy(proxy, {
             get(target, key) {
                 // only allow to access proxy.lexer, proxy.parser, and proxy.symbolsOfProduction
-                if (typeof key === "string" && /^\d+$/.test(key)) {
+                if (typeof key === "string" && /^\d+$/.test(key) || typeof key === "number") {
                     return target.symbolsOfProduction[key];
                 }
                 if (key === "length") {
@@ -328,9 +328,10 @@ class Parser {
                 if (typeof key === "string" && /^\d+$/.test(key)) {
                     if (parseInt(key) >= target.symbolsOfProduction.length) {
                         console.warn(`You are not allowed to write to index ${key}, cause it's out of range`);
-                        return;
+                        return false;
                     }
                     target.symbolsOfProduction[key] = value;
+                    return true;
                 } else {
                     throw RangeError(`Number is the only valid property name`);
                 }

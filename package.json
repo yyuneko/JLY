@@ -9,6 +9,8 @@
     "test": "jest --coverage"
   },
   "dependencies": {
+    "lexer": "file:./src/modules/Lexer",
+    "parser": "file:./src/modules/Parser",
     "@observablehq/graphviz": "^0.2.1",
     "axios": "^0.26.1",
     "bootstrap": "^5.1.3",
